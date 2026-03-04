@@ -1,0 +1,8 @@
+From: sender@example.com
+To: receiver@example.com
+Subject: Sample intake
+Message-ID: <sample-1@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Please classify this as a brief.
