@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legalai-ldc"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "pytest>=8.0",
+  "scikit-learn>=1.4",
+  "sentence-transformers>=3.0",
+  "numpy>=1.26",
+  "pandas>=2.2",
+  "pydantic>=2.7",
+  "python-dotenv>=1.0",
+  "tqdm>=4.66",
+  "rich>=13.7",
+]
+[project.scripts]
+ldc = "ldc.cli:main"
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

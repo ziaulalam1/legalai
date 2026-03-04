@@ -1,0 +1,27 @@
+services:
+  legalai:
+    build: .
+    image: legalai:local
+    container_name: legalai
+    working_dir: /app
+    user: "${UID}:${GID}"
+    volumes:
+      - ./:/app:rw
+      - ./runtime:/runtime:rw
+    environment:
+      - HOME=/tmp
+      - XDG_CACHE_HOME=/tmp
+      - USER=appuser
+      - LOGNAME=appuser
+      - USERNAME=appuser
+      - TORCHINDUCTOR_CACHE_DIR=/tmp/torchinductor
+      - TRANSFORMERS_CACHE=/tmp/transformers
+      - HF_HOME=/tmp/hf
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    command: ["ldc", "--help"]
