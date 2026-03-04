@@ -5,3 +5,5 @@
 ## Demo (inline)
 
 ![Demo](assets/demo.gif)
+
+**Full demo video (MP4, pausable):** <PASTE_RELEASE_URL_HERE>
