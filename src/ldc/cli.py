@@ -48,7 +48,7 @@ def _infer_eml(args: argparse.Namespace) -> None:
     model_path = Path(args.model)
 
     info = parse_eml(eml_path)
-    # sanitize message-id — it can contain slashes and @ which break the path
+    # sanitize message-id, slashes and @ can both break the path
     safe_id = (
         info["message_id"]
         .replace("/", "_")
@@ -74,7 +74,7 @@ def _infer_eml(args: argparse.Namespace) -> None:
                 )
             )
     finally:
-        # compliance requirement: extracted text must not persist after inference
+        # compliance: extracted text can't persist after inference
         purge_path(work_dir)
 
     report = EmailReport(

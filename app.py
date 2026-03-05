@@ -36,10 +36,10 @@ import gradio as gr  # noqa: E402 (import after sys.path patch)
 with gr.Blocks(title="Legal Document Classifier") as demo:
     gr.Markdown(
         "## Legal Document Classifier\n"
-        "Classifies a document into one of: **motion · brief · deposition · order · exhibit**."
+        "Classify a document as one of: **motion · brief · deposition · order · exhibit**."
     )
     gr.Markdown(
-        "> Uploaded files are processed in memory and not persisted (best-effort; this is a demo)."
+        "> Uploaded files are processed in memory, not saved to disk (demo)."
     )
 
     with gr.Tabs():

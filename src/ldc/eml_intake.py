@@ -32,7 +32,7 @@ def _pdf_to_text(pdf_path: Path) -> str:
 
 
 def _html_to_text(raw: str) -> str:
-    # good enough for legal doc attachments — not worth pulling in beautifulsoup
+    # good enough for legal doc attachments, not worth bringing in BeautifulSoup
     text = re.sub(r"<[^>]+>", " ", raw)
     return html_lib.unescape(text)
 

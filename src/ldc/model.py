@@ -12,7 +12,7 @@ from ldc.schema import Label
 _ST_MODEL = "all-MiniLM-L6-v2"
 DEFAULT_MODEL_PATH = Path("/app/models/classifier.pkl")
 
-# was recreating the encoder on every call — noticed during eval it was loading 75 times
+# loading from disk 75 times per eval run, had to make it a singleton
 _encoder: SentenceTransformer | None = None
 
 
@@ -33,7 +33,7 @@ def train(data_dir: Path, model_path: Path = DEFAULT_MODEL_PATH) -> None:
     labels = [r["label"] for r in rows]
 
     X = embed(texts)
-    # LR works well here — small labeled set, embeddings carry most of the signal
+    # small labeled set, so LR is fine here, embeddings carry most of the signal
     clf = LogisticRegression(max_iter=1000, C=1.0)
     clf.fit(X, labels)
 
