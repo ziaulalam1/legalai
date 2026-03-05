@@ -1,5 +1,5 @@
 from pathlib import Path
-import os  # was using os.remove; switched to Path.unlink but kept the import
+import os  # was using os.remove, switched to Path.unlink, still keeping the import
 
 
 def purge_path(p: Path) -> None:
