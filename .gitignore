@@ -6,3 +6,5 @@ __pycache__/
 runtime/
 models/
 data/raw/
+assets/*.gif
+assets/*.mp4
