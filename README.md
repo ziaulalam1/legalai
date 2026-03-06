@@ -26,6 +26,16 @@ Live demo: [huggingface.co/spaces/ziaulalam1/ldc](https://huggingface.co/spaces/
 
 The encoder is a module-level singleton. During eval I noticed inference was much slower than expected and traced it to the SentenceTransformer loading from disk on every `predict()` call. 75 loads for a 75-row eval set. One load per process cut eval time roughly 4x.
 
+## Deploy to Hugging Face Spaces
+
+1. Create a new Space at https://huggingface.co/new-space (SDK: **Gradio**, hardware: **CPU Free**)
+2. Push this repo to the Space:
+   ```
+   git remote add space https://huggingface.co/spaces/ziaulalam1/ldc
+   git push space main
+   ```
+3. The Space installs `requirements.txt`, trains the model from `data/train.csv` on first cold start (~30 s), then serves the Gradio UI.
+
 ## Scope
 
 In:
