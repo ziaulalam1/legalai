@@ -1,0 +1,8 @@
+Confusion matrix (rows=true, cols=predicted)
+
+                   motion       brief  deposition       order     exhibit
+       motion          15           0           0           0           0
+        brief           0          15           0           0           0
+   deposition           0           0          14           0           1
+        order           0           0           0          15           0
+      exhibit           0           0           0           0          15
