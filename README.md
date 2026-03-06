@@ -11,7 +11,7 @@ pinned: false
 
 # ldc - Legal Document Classifier
 
-A CLI + web tool that uses sentence embeddings and logistic regression to classify legal documents into five categories: motion, brief, deposition, order, and exhibit. The application is designed specifically for e-discovery processes in which each `.eml` email is parsed, the attachments are extracted from each document, each document is classified based on its content, and all of the plaintext from each document is immediately deleted after it has been used for classification to ensure compliance with discovery privilege rules.
+Most of the classification examples used in Professor Kewei Li's AI 681 at LIU Brooklyn were clean -- the classes were balanced, the text was formatted properly, the structure was predictable. Legal documents are none of these things. Depositions and briefs can appear very similar at the sentence level. Court filings are received as emails containing PDF attachments; some are scanned and others contain multi-column layouts which render most text extraction tools useless. I wanted to develop a tool that could operate on actual court documents, regardless of how they looked in a dataset. The classifier uses sentence embeddings from a pre-trained model that was fine-tuned to the specific language and terminology of law along with a logistic regression layer on top -- given the limited amount of examples (15 total per class), fine-tuning the entire transformer head would simply allow it to memorize the training data.
 
 Live demo: [huggingface.co/spaces/ziaulalam1/ldc](https://huggingface.co/spaces/ziaulalam1/ldc)
 
@@ -83,26 +83,26 @@ The classifier was trained on full-length documents. Inputs under ~50 tokens wil
 ## Tradeoffs and Limitations
 
 ### Why logistic regression, not fine-tuning?
-With 15 examples per class, fine-tuning a transformer head risks memorising the training set. `all-MiniLM-L6-v2` already encodes legal language well. LR on top of those embeddings generalises cleanly at this data size and trains in under a second on CPU.
+With 15 examples per class, fine-tuning a transformer head can lead to simply memorizing the training set. However, all-MiniLM-L6-v2 already performs well on encoding legal language, therefore LR on top of those embeddings will generalize cleanly at this data size, and will train in less than one second on CPU.
 
 ### Why `pdftotext` over a pure-Python PDF library?
-Legal PDFs from court filings often have two-column layouts, embedded form fields, and running header/footer boilerplate. `pdfminer` and `pypdf` return that structure verbatim, so the classifier ends up seeing column-interleaved text and footer noise mixed into the document body, which tanks accuracy. `pdftotext` (Poppler) applies layout heuristics to reconstruct reading order and strips the noise. It adds a system dependency, but text quality directly determines classification quality, so correctness won. The Dockerfile handles the install.
+Legal PDFs from court filings usually contain two-column layouts, embedded form fields and boilerplate running headers/footers. `pdfminer` and `pypdf` return that structure verbatim, thus the classifier has to deal with column-interleaved text and footer noise mixed into the document body which hurts accuracy. `pdftotext` (Poppler) uses layout heuristics to reconstruct the reading order and remove the noise. It adds a system dependency, but the quality of the text directly influences the quality of the classification, so correctness won. The Dockerfile takes care of the installation.
 
 ### Limitations
-- 15 examples per class is thin. Precision degrades on ambiguous documents, for example a brief that embeds exhibit attachments.
-- Intake assumes UTF-8 or latin-1 encoding. Non-Latin attachments are skipped silently.
-- The Gradio UI accepts plain text only. The full `.eml` intake pipeline is not exposed in the web demo.
+- There are only 15 examples per class. Precision decreases on ambiguous documents, e.g., a brief that includes exhibit attachments.
+- The intake assumes either UTF-8 or latin-1 encoding. Non-Latin attachments are skipped silently.
+- Only plain text is accepted by the Gradio UI. The complete .eml intake pipeline is not available in the web demo.
 
 ## What I'd do next
 
 ### Grow training data via active learning
-Run inference on unlabelled documents, surface low-confidence predictions for human review, retrain. The pipeline is already there. The bottleneck is labelled data.
+Run inference on unlabeled documents; surface low-confidence predictions for human review; retrain. The pipeline is already implemented. The bottleneck is labeled data.
 
 ### Add a confidence threshold
-Below ~60%, return `"uncertain"` rather than a potentially wrong label. A wrong label in discovery is worse than no label.
+Below ~60% return `"uncertain"` instead of a potentially wrong label. A wrong label during discovery is worse than no label.
 
 ### Async purge
-The `finally` block currently blocks the response. In a higher-throughput setting, purge should be fire-and-forget with a watchdog to catch failures.
+The `finally` block currently locks the response. In a higher-throughput environment, purge should be fire-and-forget with a watchdog to catch failures.
 
 ### Structured logging
-Output is currently `print()`. JSON logs to stdout would make the compliance audit trail machine-readable.
+Currently, output is `print()`. JSON logs to stdout would make the compliance audit trail machine-readable.
