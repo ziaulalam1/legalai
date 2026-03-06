@@ -8,3 +8,5 @@ models/
 data/raw/
 assets/*.gif
 assets/*.mp4
+assets/*.png
+reports/
