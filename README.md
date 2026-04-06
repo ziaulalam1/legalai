@@ -76,6 +76,22 @@ docker compose run --rm legalai python -m pytest -q
 
 The purge tests exist because the compliance guarantee is the hardest property to verify by inspection alone. The test runs the full extraction pipeline against `samples/sample.eml`, confirms documents were extracted, then confirms the work directory no longer exists after `purge_path()`.
 
+## LLM Classifier Comparison
+
+`src/ldc/llm_classifier.py` adds a second classification approach using the Anthropic Claude API. Same `predict(text)` interface as the embedding model — no weights, no training data required.
+
+| Approach | Method | Weights | Speed |
+|---|---|---|---|
+| Embedding + LR | `all-MiniLM-L6-v2` + logistic regression | Trained on 75 samples | Fast (local) |
+| LLM few-shot | Claude Haiku (5-shot prompting) | None | API latency |
+
+To run the LLM classifier:
+
+```python
+from ldc.llm_classifier import predict  # requires ANTHROPIC_API_KEY in env
+label, confidence = predict("COMES NOW Plaintiff and respectfully moves...")
+```
+
 ## Troubleshooting
 
 ### Cold start is slow (~30 s)
