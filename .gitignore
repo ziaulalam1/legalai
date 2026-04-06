@@ -10,3 +10,6 @@ assets/*.gif
 assets/*.mp4
 assets/*.png
 reports/
+INTERVIEW.md
+*.txt
+portfolio/
