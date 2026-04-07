@@ -5,6 +5,7 @@ from pathlib import Path
 sys.path.insert(0, "src")
 
 from ldc.model import train, predict, embed
+from ldc.validators import compute_centroids, validate, create_audit_record
 
 MODEL_PATH = Path("models/classifier.pkl")
 DATA_DIR   = Path("data")
@@ -89,9 +90,17 @@ def _generate_plots() -> tuple:
 
 
 _ensure_model()
+_centroids = compute_centroids(DATA_DIR)
 _plot_all, _plot_mb = _generate_plots()
 
 import gradio as gr  # noqa: E402 (import after sys.path patch)
+
+
+_STATUS_COLORS = {
+    "clear": "### \\u2705 All checks passed",
+    "review": "### \\u26A0\\uFE0F Review recommended",
+    "uncertain": "### \\u274C Classification uncertain",
+}
 
 _BEHAVIOR_NOTES = """\
 **Known behavior**
@@ -119,24 +128,78 @@ _CONFUSION_MD = """\
 | **true: exhibit** | 0 | 0 | 0 | 0 | 15 |
 """
 
+_VALIDATION_NOTES = """\
+**Validation invariants**
+
+Five checks run on every classification. Each is derived from a documented failure mode:
+
+1. **Confidence gate** — Below 30%, the output is flagged as uncertain. The model's mean \
+confidence is 0.45 across 5 classes; 30% is calibrated to the known misclassification threshold (0.28). \
+A wrong label during discovery is worse than no label.
+2. **Confusion pair detection** — If the gap between the two nearest class centroids is within 0.05 \
+cosine distance, the classification is flagged for manual review. Motion/order (0.133 cosine distance) \
+is the closest centroid pair.
+3. **Short-input degradation** — Inputs under 10 tokens receive a reliability warning. \
+Training excerpts are 13-28 tokens; below 10 provides too little context for the sentence \
+embedding model.
+4. **Perturbation stability** — The input is truncated to 80% and re-classified. If the \
+label flips at high confidence (>80%), the original confidence is flagged as unreliable.
+5. **Audit record** — Every classification produces a structured JSON record: input hash, \
+label, confidence, validation flags, token count, and timestamp.
+"""
+
+
+def _format_validation(report, audit):
+    """Format validation report as markdown."""
+    lines = [_STATUS_COLORS.get(report.status, "")]
+
+    if report.flags:
+        lines.append("")
+        for f in report.flags:
+            icon = "\\u26D4" if f.severity == "error" else "\\u26A0\\uFE0F"
+            lines.append(f"- {icon} **{f.check}**: {f.message}")
+
+    lines.append("")
+    lines.append(f"**Tokens:** {report.token_count}")
+    if report.stable is not None:
+        lines.append(f"**Perturbation stable:** {'Yes' if report.stable else 'No'}")
+
+    if report.top_classes:
+        lines.append("")
+        lines.append("**Centroid distances** (lower = closer match):")
+        for tc in report.top_classes[:3]:
+            lines.append(f"- {tc['label']}: {tc['centroid_distance']:.4f}")
+
+    lines.append("")
+    lines.append(f"**Audit hash:** `{audit.input_hash}`")
+
+    return "\n".join(lines)
+
 
 def classify_text(text: str):
     if not text or not text.strip():
-        return "", ""
-    label, conf = predict(text.strip(), model_path=MODEL_PATH)
-    return str(label), f"{conf:.1%}"
+        return "", "", ""
+    text = text.strip()
+    label, conf = predict(text, model_path=MODEL_PATH)
+    emb = embed([text])[0]
+    report = validate(text, label, conf, emb, _centroids, MODEL_PATH)
+    audit = create_audit_record(text, label, conf, report)
+    validation_md = _format_validation(report, audit)
+    return str(label), f"{conf:.1%}", validation_md
 
 
 def classify_file(file):
     if file is None:
-        return "", ""
+        return "", "", ""
     return classify_text(Path(file).read_text(errors="ignore"))
 
 
 with gr.Blocks(title="Legal Document Classifier") as demo:
     gr.Markdown(
         "## Legal Document Classifier\n"
-        "Classify a document as one of: **motion · brief · deposition · order · exhibit**."
+        "Classify a document as one of: **motion · brief · deposition · order · exhibit**.\n\n"
+        "Every classification runs through a validation layer that checks confidence, "
+        "input quality, class ambiguity, and perturbation stability."
     )
     gr.Markdown("> Uploaded files are processed in memory, not saved to disk (demo).")
 
@@ -149,7 +212,8 @@ with gr.Blocks(title="Legal Document Classifier") as demo:
             with gr.Row():
                 text_label = gr.Textbox(label="Predicted label")
                 text_conf  = gr.Textbox(label="Confidence")
-            text_btn.click(classify_text, inputs=text_in, outputs=[text_label, text_conf])
+            text_validation = gr.Markdown(label="Validation report")
+            text_btn.click(classify_text, inputs=text_in, outputs=[text_label, text_conf, text_validation])
 
         with gr.Tab("Upload .txt file"):
             file_in = gr.File(file_types=[".txt"], label="Upload .txt file")
@@ -157,7 +221,11 @@ with gr.Blocks(title="Legal Document Classifier") as demo:
             with gr.Row():
                 file_label = gr.Textbox(label="Predicted label")
                 file_conf  = gr.Textbox(label="Confidence")
-            file_btn.click(classify_file, inputs=file_in, outputs=[file_label, file_conf])
+            file_validation = gr.Markdown(label="Validation report")
+            file_btn.click(classify_file, inputs=file_in, outputs=[file_label, file_conf, file_validation])
+
+        with gr.Tab("Validation invariants"):
+            gr.Markdown(_VALIDATION_NOTES)
 
         with gr.Tab("Model behavior"):
             gr.Markdown(_BEHAVIOR_NOTES)

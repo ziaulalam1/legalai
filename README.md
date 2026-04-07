@@ -119,16 +119,53 @@ Legal PDFs from court filings usually contain two-column layouts, embedded form 
 - The intake assumes either UTF-8 or latin-1 encoding. Non-Latin attachments are skipped silently.
 - Only plain text is accepted by the Gradio UI. The complete .eml intake pipeline is not available in the web demo.
 
+## Validation Layer
+
+The classifier alone tells you what a document is. The validation layer tells you when to trust that answer.
+
+Every classification runs through 5 invariant checks, each derived from a documented failure mode:
+
+| Check | What it catches | Threshold | Calibration source |
+|-------|----------------|-----------|-------------------|
+| Confidence gate | Near-random predictions | < 30% | Known misclassification scored 0.28; model mean is 0.45 |
+| Confusion pair | Ambiguous top-2 classes | Gap < 0.05 | Motion/order centroids are 0.133 apart (closest pair) |
+| Short input | Insufficient context | < 10 tokens | Training excerpts are 13-28 tokens |
+| Perturbation stability | Fragile high-confidence labels | Label flips on 20% truncation | Only checked when confidence > 80% |
+| Audit record | Completeness | All fields non-null | SHA-256 input hash, timestamp, flags |
+
+### Benchmark results (75 training documents)
+
+| Metric | Value |
+|--------|-------|
+| Clear (all checks passed) | 66/75 (88%) |
+| Review (ambiguous, needs human check) | 7/75 (9%) |
+| Uncertain (confidence too low) | 2/75 (3%) |
+| Raw throughput | 102.9 docs/s |
+| Validated throughput | 35.5 docs/s |
+| Overhead | +189% |
+
+The order class has the highest flag rate (6/15) because motion and order share procedural, court-directed language and have the smallest centroid separation (0.133). This is exactly the confusion pair the model is most likely to get wrong, and the validation layer catches it.
+
+### Why calibrate?
+
+The original README noted "confidence below ~60% should be treated as uncertain." On inspection, the model never exceeds 60% confidence -- even on training data. Setting a 60% threshold would flag every single prediction. The actual thresholds were derived from the model's empirical behavior: confidence distribution, centroid distances, and training-set token lengths. Validation that isn't calibrated to the model it validates is noise.
+
+### Running the validation benchmark
+
+```bash
+PYTHONPATH=src python benchmark_validators.py
+# outputs: reports/validation_benchmark.json, reports/validation_benchmark.png
+```
+
+---
+
 ## What I'd do next
 
 ### Grow training data via active learning
 Run inference on unlabeled documents; surface low-confidence predictions for human review; retrain. The pipeline is already implemented. The bottleneck is labeled data.
 
-### Add a confidence threshold
-Below ~60% return `"uncertain"` instead of a potentially wrong label. A wrong label during discovery is worse than no label.
+### Cross-validation on the validation layer itself
+The current thresholds were calibrated on training data. A held-out validation set would test whether the thresholds generalize -- specifically, whether the confusion pair margin and confidence gate catch the same types of errors on unseen documents.
 
 ### Async purge
 The `finally` block currently locks the response. In a higher-throughput environment, purge should be fire-and-forget with a watchdog to catch failures.
-
-### Structured logging
-Currently, output is `print()`. JSON logs to stdout would make the compliance audit trail machine-readable.

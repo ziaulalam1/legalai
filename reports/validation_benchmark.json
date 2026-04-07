@@ -1,0 +1,23 @@
+{
+  "total_documents": 75,
+  "raw_time_s": 0.7292,
+  "raw_throughput_docs_per_s": 102.9,
+  "validated_time_s": 2.1098,
+  "validated_throughput_docs_per_s": 35.5,
+  "overhead_pct": 189.3,
+  "centroid_computation_s": 0.8098,
+  "status_breakdown": {
+    "clear": 66,
+    "review": 7,
+    "uncertain": 2
+  },
+  "flags_by_class": {
+    "motion": 2,
+    "brief": 0,
+    "deposition": 1,
+    "order": 6,
+    "exhibit": 0
+  },
+  "flagged_documents": 9,
+  "unflagged_documents": 66
+}
